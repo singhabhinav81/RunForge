@@ -2,14 +2,23 @@ from fastapi import FastAPI, Request
 from app.api.routes.routes import router
 from app.api.routes.teams import team_router
 from app.api.routes.jobs import job_router
+from app.api.routes.job_runs import job_run_router
 import uvicorn
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from app.api.exceptions.base import RunForgeException
 
 app = FastAPI(title="RunForge API", description="Workload Automation Platform", version="1.0.0")
 app.include_router(router, prefix="/api", tags=["API Endpoints"])
 app.include_router(team_router, prefix="/api", tags=["Teams"])
 app.include_router(job_router, prefix="/api", tags=["Jobs"])
+app.include_router(job_run_router, prefix="/api", tags=["JobsRun"])
+
+
+@app.exception_handler(RunForgeException)
+def runforge_exception_handler(request: Request, exc: RunForgeException):
+    # Raising domain exceptions prevents error objects from being serialized as 200/201 responses.
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
 @app.exception_handler(RequestValidationError)
@@ -23,7 +32,8 @@ def validation_exception_handler(request: Request, exc: RequestValidationError):
     """
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
+        # Do not echo the request body: it could contain secrets as the API grows.
+        content={"detail": exc.errors()},
     )
 
 

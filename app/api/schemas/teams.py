@@ -1,7 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class TeamCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = None
+
+
+class TeamUpdate(BaseModel):
+    # Update fields are optional so clients can change one field without resending the whole Team.
+    name: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
 
 class TeamResponse(BaseModel):

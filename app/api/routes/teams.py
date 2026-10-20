@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from app.api.schemas.teams import TeamCreate
 from app.api.services.teams_service import create_team, get_team_by_id, get_all_teams, delete_team, update_team
 from sqlalchemy.orm import Session
-from app.api.exceptions.team import TeamNotFoundException, DuplicateTeamNameException, UnauthorizedTeamAccessException
 
 from app.db.deps import get_db
 

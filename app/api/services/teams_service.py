@@ -1,6 +1,6 @@
 from app.api.schemas.teams import TeamCreate, TeamResponse, TeamListResponse, TeamDeleteResponse
 from sqlalchemy.orm import Session
-from app.api.exceptions.team import TeamNotFoundException, DuplicateTeamNameException
+from app.api.exceptions.team import TeamNotFoundException, DuplicateTeamNameException, UnauthorizedTeamAccessException
 
 from app.db.models import Team
 
@@ -23,7 +23,7 @@ def create_team(db:Session, team: TeamCreate) -> TeamResponse:
     )
 
     if existing_team:
-        raise DuplicateTeamNameException(team.name)
+        return DuplicateTeamNameException(team.name)
     
     new_team = Team(name=team.name, description=team.description)
     db.add(new_team)
@@ -81,7 +81,7 @@ def delete_team(db: Session, team_id: int) -> bool:
         db.delete(team)
         db.commit()
         return TeamDeleteResponse(message=f"Team with ID {team_id} deleted successfully.")
-    raise TeamNotFoundException(team_id)
+    return TeamNotFoundException(team_id)
 
 def update_team(db: Session, team_id: int, team: TeamCreate) -> TeamResponse | None:
     """

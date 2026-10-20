@@ -10,22 +10,9 @@ from sqlalchemy import (
 
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
-import enum
+from app.api.domain.run_status import JobRunStatus
+from app.api.domain.attempt_status import AttemptStatus
 from sqlalchemy import Enum, UniqueConstraint, CheckConstraint
-
-
-class JobRunStatus(enum.Enum):
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-
-class AttemptStatus(enum.Enum):
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-    TIMED_OUT = "TIMED_OUT"
 
 
 class User(Base):
@@ -106,6 +93,11 @@ class TeamMember(Base):
 
 class Jobs(Base):
     __tablename__ = "jobs"
+
+    __table_args__ = (
+        # Service checks improve the error message; this constraint prevents races from creating duplicates.
+        UniqueConstraint("team_id", "name", name="uq_jobs_team_name"),
+    )
 
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True
