@@ -73,7 +73,7 @@ def delete_job(db: Session, job_id: int):
     job = db.query(Jobs).filter(Jobs.id==job_id).first()
     if job:
         # Keep execution history intact; callers receive a clear conflict instead of a database 500.
-        if db.query(Jobs).filter(Jobs.job_id == job_id).first():
+        if db.query(Jobs).filter(Jobs.id == job_id).first():
             raise JobHasRunsException(job_id)
         db.delete(job)
         try:

@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.api.schemas.job_runs import JobRunsListResponse
-from app.api.services.job_runs_service import create_job_run, get_job_run_by_id, get_all_job_runs
+from app.api.services.job_runs_service import create_job_run, get_job_run_by_id, get_all_job_runs, delete_job_run
 from app.db.deps import get_db
 from app.db.models import JobRunStatus
 
@@ -35,6 +35,13 @@ def get_all_job_runs_endpoint(
     return get_all_job_runs(db=db, job_id=job_id, status=status, offset=offset, limit=page_size)
     
 
+@job_run_router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT, description="Delete a job run")
+def delete_job_run_endpoint(run_id: int, db: Session = Depends(get_db)):
+    return delete_job_run(db=db, run_id=run_id)
+
+
 @job_run_router.post("/runs/{run_id}/cancel", status_code=status.HTTP_200_OK, description="Cancel a job run by its run id")
 def cancel_job_run_endpoint(run_id: int, db: Session = Depends(get_db)):
     pass
+
+
