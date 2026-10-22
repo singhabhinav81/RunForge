@@ -100,8 +100,9 @@ def delete_job_run(db: Session, run_id: int) -> None:
     if job_run is None:
         raise JobRunNotFoundException(run_id=run_id)
     
-    # 2. Delete the job run
+    # 2. Delete child JobAttempts first to avoid FK constraint violations
+    db.query(JobAttempts).filter(JobAttempts.run_id == run_id).delete()
+
+    # 3. Delete the job run
     db.delete(job_run)
     db.commit()
-    # 3. Return the response
-    return JobRunResponse.model_validate(job_run)

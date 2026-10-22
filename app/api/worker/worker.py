@@ -14,9 +14,10 @@ from app.api.executors.executor import execute_job
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+MAX_ATTEMPTS = 3
 
 def process_one_run(db: Session) -> bool:
-    """Process one queued JobRun. Return False if none is available."""
+    """Process one queued run, retrying failures up to MAX_ATTEMPTS."""
 
     run = (
         db.query(JobRuns)
@@ -39,10 +40,7 @@ def process_one_run(db: Session) -> bool:
     )
 
     if attempt is None:
-        logger.error(
-            "JobRun %s is queued but has no queued attempt",
-            run.id,
-        )
+        logger.error("Queued JobRun %s has no queued attempt", run.id)
         return False
 
     job = db.query(Jobs).filter(Jobs.id == run.job_id).first()
@@ -51,10 +49,13 @@ def process_one_run(db: Session) -> bool:
         logger.error("Job %s does not exist", run.job_id)
         return False
 
-    # Mark both records as running before executing the workload.
+    # Mark the current attempt as running.
     now = datetime.now(timezone.utc)
     run.status = JobRunStatus.RUNNING
-    run.started_at = now
+
+    if run.started_at is None:
+        run.started_at = now
+
     attempt.status = AttemptStatus.RUNNING
     attempt.started_at = now
 
@@ -65,40 +66,79 @@ def process_one_run(db: Session) -> bool:
         raise
 
     logger.info(
-        "Started JobRun %s, attempt %s",
+        "Running JobRun %s, attempt %s/%s",
         run.id,
         attempt.attempt_number,
+        MAX_ATTEMPTS,
     )
 
     try:
         result = execute_job(job)
 
-        run.status = JobRunStatus.SUCCESS
+    except Exception as exc:
+        finished_at = datetime.now(timezone.utc)
+
+        attempt.status = AttemptStatus.FAILED
+        attempt.error = str(exc)
+        attempt.finished_at = finished_at
+
+        if attempt.attempt_number < MAX_ATTEMPTS:
+            # Schedule another attempt for the SAME run.
+            next_attempt = JobAttempts(
+                run_id=run.id,
+                attempt_number=attempt.attempt_number + 1,
+                status=AttemptStatus.QUEUED,
+            )
+
+            db.add(next_attempt)
+
+            # The run is eligible for processing again.
+            run.status = JobRunStatus.QUEUED
+            run.finished_at = None
+
+            logger.warning(
+                "Attempt %s failed for JobRun %s. "
+                "Queueing attempt %s/%s. Error: %s",
+                attempt.attempt_number,
+                run.id,
+                next_attempt.attempt_number,
+                MAX_ATTEMPTS,
+                exc,
+            )
+        
+        else:
+            # No attempts remain.
+            run.status = JobRunStatus.FAILED
+            run.finished_at = finished_at
+
+            logger.error(
+                "JobRun %s failed after %s attempts",
+                run.id,
+                MAX_ATTEMPTS,
+            )
+
+    else:
+        # Execution succeeded.
+        finished_at = datetime.now(timezone.utc)
+
         attempt.status = AttemptStatus.SUCCESS
+        attempt.finished_at = finished_at
+
+        run.status = JobRunStatus.SUCCESS
+        run.finished_at = finished_at
 
         logger.info(
-            "JobRun %s completed: %s",
+            "JobRun %s succeeded on attempt %s: %s",
             run.id,
+            attempt.attempt_number,
             result,
         )
 
-    except Exception as exc:
-        run.status = JobRunStatus.FAILED
-        attempt.status = AttemptStatus.FAILED
-        attempt.error = str(exc)
-
-        logger.exception("JobRun %s failed", run.id)
-
-    finally:
-        finished_at = datetime.now(timezone.utc)
-        run.finished_at = finished_at
-        attempt.finished_at = finished_at
-
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return True
 
