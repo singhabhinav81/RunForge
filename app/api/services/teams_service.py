@@ -23,7 +23,7 @@ def create_team(db:Session, team: TeamCreate) -> TeamResponse:
     )
 
     if existing_team:
-        return DuplicateTeamNameException(team.name)
+        raise DuplicateTeamNameException(team.name)
     
     new_team = Team(name=team.name, description=team.description)
     db.add(new_team)
@@ -81,7 +81,7 @@ def delete_team(db: Session, team_id: int) -> bool:
         db.delete(team)
         db.commit()
         return TeamDeleteResponse(message=f"Team with ID {team_id} deleted successfully.")
-    return TeamNotFoundException(team_id)
+    raise TeamNotFoundException(team_id)
 
 def update_team(db: Session, team_id: int, team: TeamCreate) -> TeamResponse | None:
     """

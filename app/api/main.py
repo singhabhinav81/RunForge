@@ -1,8 +1,11 @@
+from app.api.exceptions import job_attempts
+from app.api.exceptions import job_attempts
 from fastapi import FastAPI, Request
 from app.api.routes.routes import router
 from app.api.routes.teams import team_router
 from app.api.routes.jobs import job_router
 from app.api.routes.job_runs import job_run_router
+from app.api.routes.job_attempts import job_attempt_router
 import uvicorn
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -13,6 +16,7 @@ app.include_router(router, prefix="/api", tags=["API Endpoints"])
 app.include_router(team_router, prefix="/api", tags=["Teams"])
 app.include_router(job_router, prefix="/api", tags=["Jobs"])
 app.include_router(job_run_router, prefix="/api", tags=["JobsRun"])
+app.include_router(job_attempt_router, prefix="/api", tags=["JobAttempts"])
 
 
 @app.exception_handler(RunForgeException)
