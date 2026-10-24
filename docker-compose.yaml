@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: runforge
       POSTGRES_USER: runforge
-      POSTGRES_PASSWORD: runforge_dev_password
+      POSTGRES_PASSWORD: 
 
     ports:
       - "5432:5432"
