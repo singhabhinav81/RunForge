@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from app.db.database import Base
 from app.db.deps import get_db
 from app.api.main import app
+import os
 
 
 # ---------------------------------------------------------------------------
@@ -146,3 +147,29 @@ def create_job_run(client, create_job):
         return resp.json()
 
     return _create
+
+
+@pytest.fixture()
+def postgres_db_session():
+    """Provide an isolated transaction on the PostgreSQL test database."""
+    database_url = os.getenv("TEST_POSTGRES_URL")
+
+    if not database_url:
+        pytest.skip("TEST_POSTGRES_URL is not configured")
+
+    engine = create_engine(database_url)
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = sessionmaker(
+        bind=connection,
+        join_transaction_mode="create_savepoint",
+    )()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+        engine.dispose()

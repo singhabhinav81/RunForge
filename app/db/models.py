@@ -13,6 +13,7 @@ from app.db.database import Base
 from app.api.domain.run_status import JobRunStatus
 from app.api.domain.attempt_status import AttemptStatus
 from sqlalchemy import Enum, UniqueConstraint, CheckConstraint
+import uuid
 
 
 class User(Base):
@@ -159,6 +160,15 @@ class JobRuns(Base):
                     server_default=func.now(),
                     nullable=False,
     )
+    worker_id: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 class JobAttempts(Base):
     __tablename__ = "job_attempts"
@@ -201,6 +211,3 @@ class JobAttempts(Base):
         Text,
         nullable=True,
     )
-
-
-
